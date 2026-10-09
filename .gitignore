@@ -1,0 +1,29 @@
+# Entornos y secretos locales
+.env
+.env.*
+!.env.example
+
+# Archivos temporales y logs
+*.tmp
+*.temp
+*.log
+logs/
+tmp/
+temp/
+
+# Respaldos locales de bases de datos
+*.dump
+*.backup
+
+# Archivos generados por el sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Archivos generados por editores e IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
