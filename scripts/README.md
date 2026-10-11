@@ -1,10 +1,11 @@
-# Scripts
+# Scripts de operación
 
-Este directorio contendrá utilidades controladas para operaciones de la base
-de datos, incluidos respaldos y restauración.
+- `apply_migrations.ps1`: ejecuta las migraciones activas en orden, registra
+  checksums y evita ejecuciones concurrentes.
+- `check_connection.ps1`: comprueba la conexión al PostgreSQL de pruebas.
+- `provision_admin.ps1`: permanece bloqueado hasta que exista un proveedor
+  Argon2id compatible con el backend. No genera bcrypt ni credenciales
+  ficticias.
 
-Los futuros scripts deberán documentar su propósito y gestionarse de forma
-segura. Por ahora no se han incorporado scripts ejecutables.
-
-No deben almacenarse aquí migraciones SQL, respaldos locales, secretos,
-archivos `.env`, contenedores ni herramientas generales de la aplicación.
+Los scripts no deben imprimir secretos ni recibir contraseñas como argumentos
+de procesos.

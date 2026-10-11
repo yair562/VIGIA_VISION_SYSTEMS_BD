@@ -1,0 +1,28 @@
+-- ============================================================
+-- VIGIA VISION SYSTEMS
+-- V002__triggers.sql
+-- PostgreSQL 16+
+--
+-- Finalidad:
+--   Marcador de posición documental de versión.
+--
+-- Estado en la Línea Base V1:
+--   En esta versión del sistema, todas las reglas de integridad referencial,
+--   validaciones de dominio (coordenadas ROI normalizadas, formato de placas,
+--   rangos de confianza, coherencia de alertas y estados) se resuelven
+--   completamente mediante restricciones declarativas nativas de PostgreSQL
+--   (CHECK, FOREIGN KEY, UNIQUE y DEFAULT) en V001__baseline_schema.sql.
+--
+--   Por principio de diseño, el sistema desacopla la lógica de aplicación
+--   y conectividad en tiempo real (supervisión de video WebRTC, sockets y
+--   sensores físicos) del motor relacional. Por tanto, no se requieren
+--   triggers en la base de datos para la versión actual.
+--
+--   Este archivo no realiza cambios de esquema ni operaciones destructivas.
+--   Cualquier trigger o procedimiento almacenado que se requiera en etapas
+--   futuras deberá incorporarse mediante una migración versionada nueva
+--   (ej. V004__triggers_adicionales.sql).
+-- ============================================================
+
+-- No-op: No hay sentencias DDL en esta migración.
+SELECT 1 AS v002_triggers_noop WHERE FALSE;

@@ -1,57 +1,96 @@
-# VIGIA — Base de Datos
+# VIGIA Vision Systems — Base de Datos
 
-## Propósito
+Entorno y ciclo de vida de la base de datos PostgreSQL 16+ para VIGIA Vision Systems.
 
-Este repositorio organizará los artefactos específicos de la base de datos de
-VIGIA Vision Systems. Su objetivo es proporcionar una ubicación independiente
-para la documentación, las futuras migraciones, las utilidades operativas y
-las pruebas del esquema.
+El modelo relacional canónico consta de **15 tablas**, restricciones de integridad referencial, índices de cobertura, comentarios de metadatos y control automatizado de versiones.
 
-El esquema PostgreSQL V2 vigente de trabajo se incorporará en una etapa
-posterior. Los documentos antiguos de base de datos que puedan existir en la
-aplicación no son la fuente oficial del esquema actual.
+---
 
-## Relación con VIGIA Vision Systems
+## 1. Requisitos Previos
 
-Este proyecto complementa la aplicación ubicada en `Software/VIGIA_Vision_Systems/`
-y mantiene separada su evolución de base de datos. No contiene ni modifica el
-código de la aplicación.
+- **Docker Desktop** con motor Linux/WSL2 activo (para entorno de pruebas reproducible).
+- **PostgreSQL 16+** cliente (`psql`) accesible en el `PATH` de Windows.
+- **PowerShell 7** o Windows PowerShell.
 
-## Tecnología prevista
+> [!IMPORTANT] Separación de Puertos
+> - **Puerto `5433`:** Reservado para el contenedor Docker de VIGIA (`vigia-db`), evitando colisionar con cualquier instalación existente.
+> - **Puerto `5432`:** Reservado para el servicio local de PostgreSQL instalado en el sistema operativo anfitrión. No modificar ni afectar este servicio.
 
-- PostgreSQL como sistema gestor de base de datos.
-- Docker Compose como tecnología prevista para facilitar entornos locales y
-  operaciones reproducibles.
+---
 
-La configuración de Docker, los archivos de entorno y los procedimientos
-ejecutables se definirán en una etapa posterior.
+## 2. Configuración Inicial del Entorno
 
-## Organización de directorios
+1. Copiar la plantilla de configuración:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+2. Editar `.env` y configurar una contraseña segura. El archivo `.env` está estrictamente ignorado en `.gitignore`.
+3. Iniciar el servicio PostgreSQL con Docker Compose:
+   ```powershell
+   docker compose up -d
+   ```
+   *El contenedor se inicializa con codificación nativa UTF-8 y expone el puerto `5433` en `localhost` con persistencia en el volumen `vigia_pgdata`.*
 
-- `docs/`: documentación técnica, decisiones de diseño y procedimientos de
-  despliegue.
-- `migrations/`: migraciones SQL versionadas e incrementales del esquema
-  PostgreSQL.
-- `scripts/`: utilidades controladas para operaciones de la base de datos,
-  respaldos y restauración.
-- `tests/`: pruebas de integridad referencial, restricciones, índices y
-  comportamiento del esquema.
+---
 
-Cada directorio contiene un README que delimita su uso y los artefactos que
-podrá contener.
+## 3. Despliegue de Migraciones y Verificación
 
-## Convenciones generales
+### Paso 1: Verificar conectividad
+```powershell
+.\scripts\check_connection.ps1
+```
 
-- Mantener los nombres de directorios en minúsculas.
-- Versionar los cambios de esquema de forma incremental y trazable.
-- No inventar tablas, relaciones ni reglas de negocio fuera del DDL vigente.
-- Mantener la documentación y los archivos necesarios para reproducir el
-  proyecto bajo control de versiones.
-- Excluir secretos, archivos temporales, respaldos locales y archivos
-  generados por herramientas.
+### Paso 2: Ejecutar el orquestador de migraciones
+```powershell
+.\scripts\apply_migrations.ps1
+```
+*El script aplica secuencialmente `V000` a `V003`, crea la tabla `public.schema_version`, calcula checksums SHA-256 de los archivos y registra cada migración de forma atómica y protegida por bloqueos asesores.*
 
-## Estado actual
+*Si se ejecuta nuevamente, detecta que todas las migraciones ya fueron aplicadas y finaliza sin duplicar tablas ni datos.*
 
-La estructura inicial del proyecto está preparada. El despliegue todavía no
-ha iniciado y aún no se han incorporado el esquema SQL, las migraciones
-ejecutables, los scripts operativos ni las configuraciones de despliegue.
+### Paso 3: Aprovisionar el usuario administrador inicial
+```powershell
+.\scripts\provision_admin.ps1
+```
+*Actualmente se detiene de forma intencional: el backend accesible todavía no
+implementa autenticación ni proporciona un proveedor Argon2id compatible. No
+se generan hashes bcrypt ni se almacenan credenciales ficticias.*
+
+El aprovisionamiento podrá habilitarse cuando se confirme la biblioteca y el
+contrato de verificación Argon2id del backend. `pgcrypto` no se utiliza para
+generar contraseñas.
+
+### Paso 4: Ejecutar pruebas de integridad
+```powershell
+psql -h localhost -p 5433 -U vigia_admin -d vigia_db -f .\tests\V001__integrity_checks.sql
+```
+*Comprueba la existencia de las 15 tablas, claves foráneas, restricciones, catálogo institucional de carreras con caracteres acentuados UTF-8 y registro de versiones.*
+
+---
+
+## 4. Estructura del Repositorio
+
+- **`compose.yaml`**: Definición de contenedor `postgres:16-alpine` en puerto `5433`.
+- **`migrations/`**: Migraciones SQL versionadas (`V000` a `V003`).
+  - **`archive/`**: Versiones preliminares archivadas fuera de la ruta de ejecución.
+- **`scripts/`**:
+  - `apply_migrations.ps1`: Orquestador transaccional con control de versiones e idempotencia.
+  - `check_connection.ps1`: Diagnóstico de conectividad con `psql`.
+  - `provision_admin.ps1`: Aprovisionamiento seguro del primer administrador.
+- **`tests/`**: Pruebas de integridad del esquema relacional y codificación UTF-8.
+- **`docs/`**: Documentación técnica y modelo relacional.
+
+---
+
+## 5. Control de Fallos y Diagnóstico
+
+- **Parada inmediata ante errores:** Cualquier sentencia SQL errónea aborta la transacción (`ON_ERROR_STOP=1`) y el script retorna código de salida `1`.
+- **Detección de alteración de migraciones:** Si una migración ya aplicada sufre modificaciones en su archivo fuente, el orquestador aborta por discrepancia de checksum SHA-256.
+- **Detener el contenedor:**
+  ```powershell
+  docker compose stop
+  ```
+- **Eliminar contenedor preservando datos del volumen:**
+  ```powershell
+  docker compose down
+  ```
