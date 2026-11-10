@@ -1,16 +1,16 @@
 param(
-    [string]$Host = "localhost",
-    [int]$Port = 5433,
-    [string]$EnvFile = (Join-Path $PSScriptRoot "..\.env")
+    [string]$DbHost = "localhost",
+    [int]$Port = 0,
+    [string]$EnvFile = (Join-Path $PSScriptRoot "..\..\.env")
 )
 
 $ErrorActionPreference = "Stop"
 
 if (-not (Test-Path -LiteralPath $EnvFile)) {
-    throw "No existe el archivo de entorno: $EnvFile. Copia .env.example como .env."
+    throw "No existe el archivo de entorno: $EnvFile. Copia Software/.env.example como Software/.env."
 }
 if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
-    throw "No se encontró psql en PATH. Instala PostgreSQL o agrega su carpeta bin al PATH."
+    throw "No se encontr psql en PATH. Instala PostgreSQL o agrega su carpeta bin al PATH."
 }
 
 $values = @{}
@@ -25,13 +25,23 @@ foreach ($required in @("POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD")) {
     }
 }
 
+if ($Port -eq 0) {
+    if ($values.ContainsKey("POSTGRES_PORT") -and -not [string]::IsNullOrWhiteSpace($values["POSTGRES_PORT"])) {
+        $Port = [int]$values["POSTGRES_PORT"]
+    } else {
+        $Port = 5434
+    }
+}
+
+$targetUser = $values["POSTGRES_USER"]
+$targetDb = $values["POSTGRES_DB"]
 $env:PGPASSWORD = $values["POSTGRES_PASSWORD"]
 try {
-    & psql --host=$Host --port=$Port --username=$values["POSTGRES_USER"] --dbname=$values["POSTGRES_DB"] --command="SELECT current_database(), current_user, version();" --set=ON_ERROR_STOP=1
+    & psql --host=$DbHost --port=$Port --username=$targetUser --dbname=$targetDb --command="SELECT current_database(), current_user, version();" --set=ON_ERROR_STOP=1
     if ($LASTEXITCODE -ne 0) {
-        throw "No fue posible conectarse a PostgreSQL (código $LASTEXITCODE)."
+        throw "No fue posible conectarse a PostgreSQL (cdigo $LASTEXITCODE)."
     }
-    Write-Host "Conexión verificada correctamente."
+    Write-Host "Conexin verificada correctamente."
 }
 finally {
     Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue

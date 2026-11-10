@@ -12,7 +12,7 @@
 [CmdletBinding()]
 param(
     [string]$DbHost = "localhost",
-    [int]$Port = 5433,
+    [int]$Port = 0,
     [string]$Database,
     [string]$User,
     [string]$EnvFile,
@@ -36,7 +36,7 @@ try {
     }
 
     if ([string]::IsNullOrWhiteSpace($EnvFile)) {
-        $EnvFile = Join-Path $scriptRoot "..\.env"
+        $EnvFile = Join-Path $scriptRoot "..\..\.env"
     }
 
     if ([string]::IsNullOrWhiteSpace($MigrationsDir)) {
@@ -106,9 +106,13 @@ try {
         throw "Faltan POSTGRES_DB, POSTGRES_USER o POSTGRES_PASSWORD en .env."
     }
 
+    if ($Port -eq 0) {
+        $Port = if ($envValues.ContainsKey("POSTGRES_PORT") -and $envValues["POSTGRES_PORT"]) { [int]$envValues["POSTGRES_PORT"] } else { 5434 }
+    }
+
     # Proteccion contra un destino equivocado.
-    if ((-not $AllowNonVigiaDatabase -and $targetDb -ne "vigia_db") -or $Port -ne 5433) {
-        throw "Destino rechazado. Este despliegue requiere vigia_db en el puerto 5433. No se modifico el esquema."
+    if ((-not $AllowNonVigiaDatabase -and $targetDb -ne "vigia_db") -or ($Port -ne 5433 -and $Port -ne 5434)) {
+        throw "Destino rechazado. Este despliegue requiere vigia_db en el puerto 5433 o 5434. No se modifico el esquema."
     }
 
     $env:PGPASSWORD = $targetPass

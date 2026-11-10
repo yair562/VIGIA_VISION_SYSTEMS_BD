@@ -1,3 +1,5 @@
+# Variables desde el .env GLOBAL (Software/.env). Compose NO lo busca en directorios superiores:
+# usar siempre  docker compose --env-file ..\.env -f compose.yaml ...  (o Software\vigia.ps1 db-up).
 services:
   db:
     image: postgres:16-alpine
@@ -10,7 +12,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
     ports:
-      - "127.0.0.1:5433:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
 
     volumes:
       - vigia_pgdata:/var/lib/postgresql/data
